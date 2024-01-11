@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, 2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2019-2020, 2023, 2024 Tigera, Inc. All rights reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -459,6 +459,13 @@ func validateCustomResource(instance *operatorv1.Installation) error {
 						return fmt.Errorf("IPv4 IPPool encapsulation %s is not supported by Calico for Windows", v4pool.Encapsulation)
 					}
 				}
+			}
+
+			b1 := operatorv1.IsIPAMStrictAffinityEnabled(instance.Spec)
+			if !b1 {
+				b := *instance.Spec.CNI.IPAM.StrictAffinity
+				log.Info(fmt.Sprintf("Installation affinity is %t and %t", b, b1))
+				return fmt.Errorf("Installation spec.CNI.IPAM.StrictAffinity must be enabled when using Calico CNI on Windows")
 			}
 		}
 	} else {

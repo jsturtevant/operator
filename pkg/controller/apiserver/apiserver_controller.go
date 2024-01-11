@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2020-2024 Tigera, Inc. All rights reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -478,6 +478,11 @@ func (r *ReconcileAPIServer) Reconcile(ctx context.Context, request reconcile.Re
 		if pcPolicy != nil {
 			components = append(components, pcPolicy)
 		}
+	}
+
+	if operatorv1.IsIPAMStrictAffinityEnabled(*network) {
+		log.Info("Strict affinity is enabled creating ipam config")
+		components = append(components, render.IPAMConfiguration())
 	}
 
 	if err = imageset.ApplyImageSet(ctx, r.client, variant, components...); err != nil {

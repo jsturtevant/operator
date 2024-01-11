@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2024 Tigera, Inc. All rights reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/tigera/operator/pkg/active"
@@ -252,6 +254,31 @@ func (r *ReconcileWindows) Reconcile(ctx context.Context, request reconcile.Requ
 	instanceStatus := instance.Status
 
 	reqLogger.V(2).Info("Loaded config", "config", instance)
+
+	if kpCm, err := utils.GetKubeProxyCM(r.client); err == nil {
+		kc := kpCm.Data["kubeconfig.conf"]
+		if kc != "" {
+			// parse the kubeconfig to get the cluster domain
+			kubeconfig, err := clientcmd.Load([]byte(kc))
+			if err != nil {
+				r.status.SetDegraded(operatorv1.ResourceReadError, "Error reading kube-proxy configmap", err, reqLogger)
+				return reconcile.Result{}, err
+			}
+			clusterName := kubeconfig.Contexts[kubeconfig.CurrentContext].Cluster
+			apiURL := kubeconfig.Clusters[clusterName].Server
+
+			url, err := url.Parse(apiURL)
+			if err != nil {
+				r.status.SetDegraded(operatorv1.ResourceReadError, "Error reading kube-proxy configmap", err, reqLogger)
+				return reconcile.Result{}, err
+			}
+
+			if err = utils.CreateDefaultServiceEndPoint(r.client, url.Hostname(), url.Port()); err != nil {
+				r.status.SetDegraded(operatorv1.ResourceReadError, "Error reading kube-proxy configmap", err, reqLogger)
+				return reconcile.Result{}, err
+			}
+		}
+	}
 
 	// The k8s service endpoint configmap must populate k8sapi.Endpoint data before validating the configuration.
 	if _, err := utils.GetK8sServiceEndPoint(r.client); err != nil {

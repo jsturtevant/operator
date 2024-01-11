@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2019-2024 Tigera, Inc. All rights reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,6 +102,10 @@ func APIServer(cfg *APIServerConfiguration) (Component, error) {
 
 func APIServerPolicy(cfg *APIServerConfiguration) Component {
 	return NewPassthrough(allowTigeraAPIServerPolicy(cfg))
+}
+
+func IPAMConfiguration() Component {
+	return NewPassthrough(ipamConfig())
 }
 
 // APIServerConfiguration contains all the config information needed to render the component.
@@ -415,6 +419,17 @@ func (c *apiServerComponent) apiServerServiceAccount() *corev1.ServiceAccount {
 			Namespace: rmeta.APIServerNamespace(c.cfg.Installation.Variant),
 		},
 	}
+}
+
+func ipamConfig() *v3.IPAMConfiguration {
+	return &v3.IPAMConfiguration{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Spec: v3.IPAMConfigurationSpec{StrictAffinity: true},
+	}
+
 }
 
 func allowTigeraAPIServerPolicy(cfg *APIServerConfiguration) *v3.NetworkPolicy {

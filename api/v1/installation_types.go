@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2024 Tigera, Inc. All rights reserved.
 /*
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -675,6 +675,8 @@ type IPAMSpec struct {
 	// Default: Calico
 	// +kubebuilder:validation:Enum=Calico;HostLocal;AmazonVPC;AzureVNET
 	Type IPAMPluginType `json:"type"`
+
+	StrictAffinity *bool `json:"strictAffinity,omitempty"`
 }
 
 // CNISpec contains configuration for the CNI plugin.
@@ -793,6 +795,13 @@ func IsFIPSModeEnabled(mode *FIPSMode) bool {
 // IsFIPSModeEnabledString is a convenience function for turning a FIPSMode reference into a string formatted bool.
 func IsFIPSModeEnabledString(mode *FIPSMode) string {
 	return fmt.Sprintf("%t", IsFIPSModeEnabled(mode))
+}
+
+func IsIPAMStrictAffinityEnabled(instance InstallationSpec) bool {
+	return instance.CNI != nil &&
+		instance.CNI.IPAM != nil &&
+		instance.CNI.IPAM.StrictAffinity != nil &&
+		*instance.CNI.IPAM.StrictAffinity
 }
 
 type WindowsNodeSpec struct {

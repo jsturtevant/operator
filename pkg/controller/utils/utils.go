@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2023 Tigera, Inc. All rights reserved.
+// Copyright (c) 2020-2024 Tigera, Inc. All rights reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -343,6 +343,47 @@ func GetK8sServiceEndPoint(client client.Client) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	return cm, nil
+}
+
+// GetK8sServiceEndPoint returns the kubernetes-service-endpoint configmap
+func GetKubeProxyCM(client client.Client) (*corev1.ConfigMap, error) {
+	cmName := "kube-proxy"
+	cm := &corev1.ConfigMap{}
+	cmNamespacedName := types.NamespacedName{
+		Name:      cmName,
+		Namespace: "kube-system",
+	}
+	if err := client.Get(context.Background(), cmNamespacedName, cm); err != nil {
+		return nil, err
+	}
+	return cm, nil
+}
+
+// CreateDefaultServiceEndPoint creates a default kubernetes-service-endpoint configmap if it does not exist
+func CreateDefaultServiceEndPoint(client client.Client, defaultHost string, defaultPort string) error {
+	_, err := GetK8sServiceEndPoint(client)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      render.K8sSvcEndpointConfigMapName,
+					Namespace: common.OperatorNamespace(),
+				},
+				Data: map[string]string{
+					"KUBERNETES_SERVICE_HOST": defaultHost,
+					"KUBERNETES_SERVICE_PORT": defaultPort,
+				},
+			}
+			if err := client.Create(context.Background(), cm); err != nil {
+				return err
+			}
+			return nil
+		}
+		return fmt.Errorf("failed to read ConfigMap %q: %s", render.K8sSvcEndpointConfigMapName, err)
+	}
+
+	// if it exists do nothing
+	return nil
 }
 
 // PopulateK8sServiceEndPoint reads the kubernetes-service-endpoint configmap and pushes
